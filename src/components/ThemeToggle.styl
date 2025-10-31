@@ -1,0 +1,30 @@
+@import '../styles/variables'
+
+.theme-toggle
+  padding 0.375rem
+  background-color header-button-bg
+  color header-text
+  border 1px solid header-button-border
+  border-radius radius-sm
+  font-size 0.7rem
+  font-weight 500
+  transition all 0.2s
+  display flex
+  align-items center
+  justify-content center
+  min-width 32px
+  min-height 32px
+  cursor pointer
+  box-shadow 0 2px 4px rgba(0, 0, 0, 0.1)
+
+  &:hover
+    background-color header-button-hover-bg
+    border-color header-button-hover-border
+
+  &:active
+    transform scale(0.95)
+
+  svg
+    width 16px
+    height 16px
+

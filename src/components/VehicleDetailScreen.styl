@@ -1,0 +1,418 @@
+@import '../styles/variables'
+
+.vehicle-detail-screen
+  min-height 100vh
+  background-color bg-secondary
+  transition background-color 0.3s ease
+
+.header
+  background-color header-bg
+  backdrop-filter blur(10px)
+  -webkit-backdrop-filter blur(10px)
+  padding 0.75rem spacing-md
+  display flex
+  justify-content space-between
+  align-items center
+  box-shadow 0 2px 8px rgba(0, 0, 0, 0.15)
+  position sticky
+  top 0
+  z-index 10
+  gap spacing-xs
+  border-bottom 2px solid header-border
+  min-height 60px
+  max-height 60px
+  transition background-color 0.3s ease, border-color 0.3s ease
+
+  .header-title-section
+    flex 1
+    display flex
+    flex-direction column
+    align-items center
+    gap 1px
+    min-width 0
+
+  h1
+    color header-text
+    font-size 1.125rem
+    font-weight 700
+    margin 0
+    text-transform uppercase
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+    max-width 100%
+    line-height 1.2
+
+  .header-model-type
+    color header-text-secondary
+    font-size 0.65rem
+    font-weight 500
+    text-transform uppercase
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+    max-width 100%
+    line-height 1
+
+  .header-actions
+    display flex
+    align-items center
+    gap 0.5rem
+    flex-shrink 0
+
+.back-button
+  padding 0.375rem 0.75rem
+  background-color header-button-bg
+  color header-text
+  border 1px solid header-button-border
+  border-radius radius-sm
+  font-size 0.7rem
+  font-weight 500
+  transition all 0.2s
+  display flex
+  align-items center
+  justify-content center
+  gap 0.25rem
+  flex-shrink 0
+  white-space nowrap
+  min-height 32px
+  box-shadow 0 2px 4px rgba(0, 0, 0, 0.1)
+
+  &:hover
+    background-color header-button-hover-bg
+    border-color header-button-hover-border
+
+  svg
+    width 16px
+    height 16px
+
+.header-add-button
+  padding 0.375rem 0.75rem
+  background-color primary-color
+  color white
+  border none
+  border-radius radius-sm
+  font-size 0.7rem
+  font-weight 500
+  transition all 0.2s
+  display flex
+  align-items center
+  justify-content center
+  gap 0.25rem
+  flex-shrink 0
+  white-space nowrap
+  min-height 32px
+  box-shadow 0 2px 4px primary-color-rgba-30
+
+  &:hover
+    background-color secondary-color
+    box-shadow 0 2px 6px primary-color-rgba-40
+
+  svg
+    width 16px
+    height 16px
+
+  &:active
+    transform scale(0.98)
+
+
+.tabs
+  display flex
+  background-color bg-primary
+  border-bottom 2px solid border-color
+  padding 0
+  gap 0
+  position sticky
+  top 60px
+  z-index 9
+  width 100%
+
+  .tab
+    flex 1
+    padding 0.875rem spacing-md
+    background-color transparent
+    border none
+    border-bottom 3px solid transparent
+    color text-secondary
+    font-size 0.75rem
+    font-weight 500
+    cursor pointer
+    transition all 0.3s ease
+    display flex
+    align-items center
+    justify-content center
+    gap 0.5rem
+    position relative
+    min-height 48px
+    text-transform uppercase
+    letter-spacing 0.5px
+
+    svg
+      width 18px
+      height 18px
+      flex-shrink 0
+      transition all 0.3s ease
+
+    &:hover:not(.active)
+      color text-primary
+      background-color rgba(0, 0, 0, 0.03)
+      
+      [data-theme='dark'] &
+        background-color rgba(255, 255, 255, 0.08)
+        color var(--primary-color)
+
+    &.active
+      color primary-color
+      background-color transparent
+      border-bottom-color primary-color
+      border-bottom-width 3px
+      font-weight 600
+
+      svg
+        color primary-color
+        transform scale(1.1)
+
+.content
+  padding spacing-sm spacing-md
+  max-width 1200px
+  margin 0 auto
+
+.job-section,
+.expense-section
+  display flex
+  flex-direction column
+  gap spacing-xs
+
+.add-button
+  padding 0.375rem spacing-sm
+  background-color primary-color
+  color white
+  border none
+  border-radius radius-sm
+  font-size 0.75rem
+  font-weight 500
+  transition all 0.2s
+  display flex
+  align-items center
+  gap 0.25rem
+  align-self flex-start
+
+  &:hover
+    background-color secondary-color
+
+  &:active
+    transform scale(0.98)
+
+.empty-state
+  text-align center
+  padding spacing-md
+  color text-secondary
+
+.job-list,
+.expense-list
+  display flex
+  flex-direction column
+  gap spacing-xs
+
+.job-card,
+.expense-card
+  background-color bg-primary
+  border-radius radius-md
+  padding spacing-xs
+  box-shadow shadow-md
+  display flex
+  flex-direction column
+  gap spacing-xs
+  cursor pointer
+  transition all 0.2s, background-color 0.3s ease
+  border 1px solid transparent
+
+  [data-theme='dark'] &
+    border-color rgba(71, 85, 105, 0.4)
+    box-shadow 0 2px 8px rgba(0, 0, 0, 0.5)
+
+  &:hover
+    box-shadow shadow-lg
+    transform translateY(-1px)
+    
+    [data-theme='dark'] &
+      background-color rgba(255, 255, 255, 0.03)
+      border-color rgba(71, 85, 105, 0.6)
+
+.job-header,
+.expense-header
+  display flex
+  justify-content space-between
+  align-items center
+  gap spacing-sm
+
+  h3
+    color text-primary
+    font-size 0.875rem
+    font-weight 700
+    flex 1
+    margin 0
+    text-transform uppercase
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+    min-width 0
+
+.job-actions,
+.expense-actions
+  display flex
+  gap 0.25rem
+  flex-shrink 0
+
+.edit-button,
+.delete-button
+  padding 0.375rem
+  border none
+  border-radius radius-sm
+  font-size 0.875rem
+  font-weight 500
+  transition all 0.2s
+  display flex
+  align-items center
+  justify-content center
+  width 32px
+  height 32px
+  box-sizing border-box
+  gap 0
+
+.edit-button
+  background-color primary-color
+  color white
+
+  &:hover
+    background-color secondary-color
+
+.delete-button
+  background-color danger-color
+  color white
+
+  &:hover
+    background-color #b91c1c
+
+.job-content
+  width 100%
+
+.job-key-metrics
+  display grid
+  grid-template-columns repeat(3, 1fr)
+  gap 0.25rem
+
+.metric-item
+  display flex
+  flex-direction row
+  align-items center
+  justify-content space-between
+  padding 0.25rem 0.5rem
+  background-color bg-secondary
+  border-radius radius-sm
+  gap 0.5rem
+  position relative
+  border 1px solid transparent
+  
+  [data-theme='dark'] &
+    border-color rgba(71, 85, 105, 0.3)
+    background-color rgba(30, 41, 59, 0.5)
+
+  &.highlight
+    background-color primary-color-rgba-10
+    border 1px solid primary-color-rgba-20
+
+  &.credits-metric
+    padding-right 0.25rem
+
+  .metric-label
+    color text-secondary
+    font-size 0.625rem
+    font-weight 500
+    text-transform capitalize
+    line-height 1
+    white-space nowrap
+
+  .metric-value
+    color text-primary
+    font-size 0.75rem
+    font-weight 700
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+    line-height 1
+
+  &:not(.credits-metric) .metric-value
+    flex 1
+    text-align right
+
+  &.credits-metric .metric-value
+    flex 1
+    text-align right
+    margin-right 0.25rem
+
+.credits-button
+  padding 0.25rem
+  background-color primary-color
+  color white
+  border none
+  border-radius radius-sm
+  font-size 0.75rem
+  display flex
+  align-items center
+  justify-content center
+  min-width 24px
+  height 24px
+  flex-shrink 0
+  cursor pointer
+  transition all 0.2s
+
+  &:hover
+    background-color secondary-color
+    transform scale(1.1)
+
+.expense-content
+  width 100%
+
+.expense-key-metrics
+  display grid
+  grid-template-columns repeat(2, 1fr)
+  gap 0.25rem
+
+.job-description,
+.expense-description
+  color text-secondary
+  font-size 0.875rem
+  line-height 1.6
+
+
+@media (max-width: mobile-breakpoint)
+  .header
+    padding spacing-sm spacing-md
+
+    h1
+      font-size 1.25rem
+
+  .content
+    padding spacing-sm
+
+  .job-key-metrics
+    grid-template-columns 1fr
+    gap 0.25rem
+
+  .metric-item
+    padding 0.375rem 0.5rem
+
+    .metric-label
+      font-size 0.65rem
+
+    .metric-value
+      font-size 0.75rem
+
+  .expense-key-metrics
+    grid-template-columns 1fr
+    gap 0.25rem
+
+  .metric-item
+    padding 0.375rem spacing-xs
+
