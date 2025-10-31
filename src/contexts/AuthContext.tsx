@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
+import { syncCache } from '../services/syncCache'
 
 export type UserRole = 'view' | 'owner' | null
 
@@ -95,6 +96,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsername(null)
     setRole(null)
     localStorage.removeItem('auth')
+    
+    // Clear sync cache from localStorage
+    syncCache.clearCache()
+    
     // Clear all user-specific IndexedDB data on logout
     if ('indexedDB' in window) {
       indexedDB.databases().then(databases => {
