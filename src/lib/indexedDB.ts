@@ -1,7 +1,21 @@
 import { Vehicle, Job, Expense, Credit } from '../types'
 
 const DB_NAME = 'VehicleManagementDB'
-const DB_VERSION = 1
+const DB_VERSION = 2 // Increment to trigger upgrade for username indexes
+
+// Helper to get current username
+const getCurrentUsername = (): string | null => {
+  try {
+    const authData = localStorage.getItem('auth')
+    if (authData) {
+      const { username } = JSON.parse(authData)
+      return username || null
+    }
+  } catch (error) {
+    console.error('Failed to get username:', error)
+  }
+  return null
+}
 
 interface Database {
   vehicles: Vehicle[]
@@ -27,20 +41,48 @@ class IndexedDBService {
 
         // Create object stores
         if (!db.objectStoreNames.contains('vehicles')) {
-          db.createObjectStore('vehicles', { keyPath: 'id' })
+          const vehiclesStore = db.createObjectStore('vehicles', { keyPath: 'id' })
+          vehiclesStore.createIndex('username', 'username', { unique: false })
+        } else {
+          const vehiclesStore = (event.target as IDBOpenDBRequest).transaction?.objectStore('vehicles')
+          if (vehiclesStore && !vehiclesStore.indexNames.contains('username')) {
+            vehiclesStore.createIndex('username', 'username', { unique: false })
+          }
         }
+        
         if (!db.objectStoreNames.contains('jobs')) {
           const jobsStore = db.createObjectStore('jobs', { keyPath: 'id' })
           jobsStore.createIndex('vehicleId', 'vehicleId', { unique: false })
+          jobsStore.createIndex('username', 'username', { unique: false })
+        } else {
+          const jobsStore = (event.target as IDBOpenDBRequest).transaction?.objectStore('jobs')
+          if (jobsStore && !jobsStore.indexNames.contains('username')) {
+            jobsStore.createIndex('username', 'username', { unique: false })
+          }
         }
+        
         if (!db.objectStoreNames.contains('expenses')) {
           const expensesStore = db.createObjectStore('expenses', { keyPath: 'id' })
           expensesStore.createIndex('vehicleId', 'vehicleId', { unique: false })
+          expensesStore.createIndex('username', 'username', { unique: false })
+        } else {
+          const expensesStore = (event.target as IDBOpenDBRequest).transaction?.objectStore('expenses')
+          if (expensesStore && !expensesStore.indexNames.contains('username')) {
+            expensesStore.createIndex('username', 'username', { unique: false })
+          }
         }
+        
         if (!db.objectStoreNames.contains('credits')) {
           const creditsStore = db.createObjectStore('credits', { keyPath: 'id' })
           creditsStore.createIndex('jobId', 'jobId', { unique: false })
+          creditsStore.createIndex('username', 'username', { unique: false })
+        } else {
+          const creditsStore = (event.target as IDBOpenDBRequest).transaction?.objectStore('credits')
+          if (creditsStore && !creditsStore.indexNames.contains('username')) {
+            creditsStore.createIndex('username', 'username', { unique: false })
+          }
         }
+        
         if (!db.objectStoreNames.contains('syncQueue')) {
           db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true })
         }
@@ -61,22 +103,45 @@ class IndexedDBService {
   // Vehicle operations
   async getAllVehicles(): Promise<Vehicle[]> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['vehicles'], 'readonly')
       const store = transaction.objectStore('vehicles')
-      const request = store.getAll()
+      
+      let request: IDBRequest
+      if (username && store.indexNames.contains('username')) {
+        // Filter by username if index exists
+        const index = store.index('username')
+        request = index.getAll(username)
+      } else {
+        // Fallback: get all and filter manually
+        request = store.getAll()
+      }
 
-      request.onsuccess = () => resolve(request.result || [])
+      request.onsuccess = () => {
+        let vehicles = request.result || []
+        // Filter by username if we got all vehicles
+        if (username && (!store.indexNames.contains('username') || request === store.getAll())) {
+          vehicles = vehicles.filter((v: Vehicle & { username?: string }) => v.username === username)
+        } else if (username) {
+          // Double check - filter out any that don't match
+          vehicles = vehicles.filter((v: Vehicle & { username?: string }) => v.username === username)
+        }
+        resolve(vehicles)
+      }
       request.onerror = () => reject(request.error)
     })
   }
 
   async saveVehicle(vehicle: Vehicle): Promise<void> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['vehicles'], 'readwrite')
       const store = transaction.objectStore('vehicles')
-      const request = store.put(vehicle)
+      // Include username when saving
+      const vehicleWithUsername = username ? { ...vehicle, username } : vehicle
+      const request = store.put(vehicleWithUsername)
 
       request.onsuccess = () => resolve()
       request.onerror = () => reject(request.error)
@@ -98,6 +163,7 @@ class IndexedDBService {
   // Job operations
   async getJobsByVehicleId(vehicleId: string): Promise<Job[]> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['jobs', 'credits'], 'readonly')
       const jobsStore = transaction.objectStore('jobs')
@@ -106,7 +172,11 @@ class IndexedDBService {
       const request = index.getAll(vehicleId)
 
       request.onsuccess = () => {
-        const jobs = request.result || []
+        let jobs = request.result || []
+        // Filter by username
+        if (username) {
+          jobs = jobs.filter((job: Job & { username?: string; vehicleId?: string }) => job.username === username)
+        }
         
         // Load credits for each job from credits table
         const creditsPromises = jobs.map((job: Job & { vehicleId: string }) => {
@@ -151,13 +221,14 @@ class IndexedDBService {
 
   async saveJob(job: Job, vehicleId: string): Promise<void> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['jobs', 'credits'], 'readwrite')
       const jobsStore = transaction.objectStore('jobs')
       const creditsStore = transaction.objectStore('credits')
 
-      // Save job with vehicleId
-      const jobWithVehicleId = { ...job, vehicleId }
+      // Save job with vehicleId and username
+      const jobWithVehicleId = username ? { ...job, vehicleId, username } : { ...job, vehicleId }
       const jobRequest = jobsStore.put(jobWithVehicleId)
 
       jobRequest.onsuccess = () => {
@@ -175,7 +246,9 @@ class IndexedDBService {
             if (job.credits && job.credits.length > 0) {
               let creditsSaved = 0
               job.credits.forEach(credit => {
-                const creditWithJobId = { ...credit, jobId: job.id, type: credit.type || 'cash' }
+                const creditWithJobId = username 
+                  ? { ...credit, jobId: job.id, type: credit.type || 'cash', username }
+                  : { ...credit, jobId: job.id, type: credit.type || 'cash' }
                 const creditRequest = creditsStore.put(creditWithJobId)
                 creditRequest.onsuccess = () => {
                   creditsSaved++
@@ -201,7 +274,9 @@ class IndexedDBService {
           if (job.credits && job.credits.length > 0) {
             let creditsSaved = 0
             job.credits.forEach(credit => {
-              const creditWithJobId = { ...credit, jobId: job.id, type: credit.type || 'cash' }
+              const creditWithJobId = username
+                ? { ...credit, jobId: job.id, type: credit.type || 'cash', username }
+                : { ...credit, jobId: job.id, type: credit.type || 'cash' }
               const creditRequest = creditsStore.put(creditWithJobId)
               creditRequest.onsuccess = () => {
                 creditsSaved++
@@ -266,23 +341,32 @@ class IndexedDBService {
   // Expense operations
   async getExpensesByVehicleId(vehicleId: string): Promise<Expense[]> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['expenses'], 'readonly')
       const store = transaction.objectStore('expenses')
       const index = store.index('vehicleId')
       const request = index.getAll(vehicleId)
 
-      request.onsuccess = () => resolve(request.result || [])
+      request.onsuccess = () => {
+        let expenses = request.result || []
+        // Filter by username
+        if (username) {
+          expenses = expenses.filter((expense: Expense & { username?: string }) => expense.username === username)
+        }
+        resolve(expenses)
+      }
       request.onerror = () => reject(request.error)
     })
   }
 
   async saveExpense(expense: Expense, vehicleId: string): Promise<void> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['expenses'], 'readwrite')
       const store = transaction.objectStore('expenses')
-      const expenseWithVehicleId = { ...expense, vehicleId }
+      const expenseWithVehicleId = username ? { ...expense, vehicleId, username } : { ...expense, vehicleId }
       const request = store.put(expenseWithVehicleId)
 
       request.onsuccess = () => resolve()
@@ -305,13 +389,14 @@ class IndexedDBService {
   // Credit operations
   async saveCredit(credit: Credit, jobId: string): Promise<void> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['credits', 'jobs'], 'readwrite')
       const creditsStore = transaction.objectStore('credits')
       const jobsStore = transaction.objectStore('jobs')
 
-      // Save credit
-      const creditWithJobId = { ...credit, jobId }
+      // Save credit with username
+      const creditWithJobId = username ? { ...credit, jobId, username } : { ...credit, jobId }
       const creditRequest = creditsStore.put(creditWithJobId)
 
       creditRequest.onsuccess = () => {
@@ -371,6 +456,7 @@ class IndexedDBService {
 
   async getCreditsByJobId(jobId: string): Promise<Credit[]> {
     const db = await this.getDB()
+    const username = getCurrentUsername()
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['credits'], 'readonly')
       const creditsStore = transaction.objectStore('credits')
@@ -384,13 +470,17 @@ class IndexedDBService {
         // Fallback: get all and filter
         const getAllRequest = creditsStore.getAll()
         getAllRequest.onsuccess = () => {
-          const allCredits = getAllRequest.result || []
-          const filtered = allCredits.filter((credit: Credit & { jobId?: string }) => {
+          let allCredits = getAllRequest.result || []
+          let filtered = allCredits.filter((credit: Credit & { jobId?: string; username?: string }) => {
             return String(credit.jobId) === String(jobId)
           })
-          const cleanedCredits = filtered.map((credit: Credit & { jobId?: string }) => {
-            const { jobId, ...creditWithoutJobId } = credit
-            return creditWithoutJobId
+          // Filter by username
+          if (username) {
+            filtered = filtered.filter((credit: Credit & { username?: string }) => credit.username === username)
+          }
+          const cleanedCredits = filtered.map((credit: Credit & { jobId?: string; username?: string }) => {
+            const { jobId, username, ...creditWithoutMeta } = credit
+            return creditWithoutMeta
           })
           resolve(cleanedCredits)
         }
@@ -403,12 +493,16 @@ class IndexedDBService {
       const request = index.getAll(jobIdStr)
 
       request.onsuccess = () => {
-        const credits = request.result || []
+        let credits = request.result || []
+        // Filter by username
+        if (username) {
+          credits = credits.filter((credit: Credit & { username?: string }) => credit.username === username)
+        }
         console.log(`getCreditsByJobId(${jobIdStr}): Found ${credits.length} credits via index query`)
-        // Remove jobId from credit objects before returning (it's metadata)
-        const cleanedCredits = credits.map((credit: Credit & { jobId?: string }) => {
-          const { jobId, ...creditWithoutJobId } = credit
-          return creditWithoutJobId
+        // Remove jobId and username from credit objects before returning (they're metadata)
+        const cleanedCredits = credits.map((credit: Credit & { jobId?: string; username?: string }) => {
+          const { jobId, username, ...creditWithoutMeta } = credit
+          return creditWithoutMeta
         })
         resolve(cleanedCredits)
       }
@@ -417,13 +511,17 @@ class IndexedDBService {
         // Fallback: get all and filter
         const getAllRequest = creditsStore.getAll()
         getAllRequest.onsuccess = () => {
-          const allCredits = getAllRequest.result || []
-          const filtered = allCredits.filter((credit: Credit & { jobId?: string }) => {
+          let allCredits = getAllRequest.result || []
+          let filtered = allCredits.filter((credit: Credit & { jobId?: string; username?: string }) => {
             return String(credit.jobId) === jobIdStr
           })
-          const cleanedCredits = filtered.map((credit: Credit & { jobId?: string }) => {
-            const { jobId, ...creditWithoutJobId } = credit
-            return creditWithoutJobId
+          // Filter by username
+          if (username) {
+            filtered = filtered.filter((credit: Credit & { username?: string }) => credit.username === username)
+          }
+          const cleanedCredits = filtered.map((credit: Credit & { jobId?: string; username?: string }) => {
+            const { jobId, username, ...creditWithoutMeta } = credit
+            return creditWithoutMeta
           })
           console.log(`Fallback: Found ${cleanedCredits.length} credits by filtering all credits`)
           resolve(cleanedCredits)

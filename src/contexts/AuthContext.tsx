@@ -95,15 +95,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsername(null)
     setRole(null)
     localStorage.removeItem('auth')
-    // Clear all user-specific IndexedDB data
+    // Clear all user-specific IndexedDB data on logout
     if ('indexedDB' in window) {
       indexedDB.databases().then(databases => {
         databases.forEach(db => {
-          if (db.name?.includes('vehicle-management')) {
+          if (db.name?.includes('VehicleManagementDB') || db.name?.includes('vehicle-management')) {
             indexedDB.deleteDatabase(db.name)
           }
         })
-      })
+      }).catch(console.error)
     }
   }
 
