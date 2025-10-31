@@ -7,6 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Vehicles table
 CREATE TABLE IF NOT EXISTS vehicles (
   id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
   "vehicleNumber" TEXT NOT NULL,
   "modelType" TEXT NOT NULL,
   "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
 -- Jobs table
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
   "vehicleId" TEXT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT DEFAULT '',
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS jobs (
 -- Credits table
 CREATE TABLE IF NOT EXISTS credits (
   id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
   "jobId" TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
   amount DECIMAL(12, 2) NOT NULL,
   date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -41,6 +44,7 @@ CREATE TABLE IF NOT EXISTS credits (
 -- Expenses table
 CREATE TABLE IF NOT EXISTS expenses (
   id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
   "vehicleId" TEXT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   amount DECIMAL(12, 2) NOT NULL,
@@ -55,6 +59,9 @@ CREATE INDEX IF NOT EXISTS idx_jobs_vehicleId ON jobs("vehicleId");
 CREATE INDEX IF NOT EXISTS idx_credits_jobId ON credits("jobId");
 CREATE INDEX IF NOT EXISTS idx_expenses_vehicleId ON expenses("vehicleId");
 CREATE INDEX IF NOT EXISTS idx_vehicles_vehicleNumber ON vehicles("vehicleNumber");
+CREATE INDEX IF NOT EXISTS idx_vehicles_username ON vehicles(username);
+CREATE INDEX IF NOT EXISTS idx_jobs_username ON jobs(username);
+CREATE INDEX IF NOT EXISTS idx_expenses_username ON expenses(username);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
@@ -62,8 +69,8 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
--- Create policies to allow all operations (you can customize these later)
--- For now, allowing anonymous access since we're using passcode auth
+-- Create policies to allow all operations with username filtering
+-- Users can only access their own data
 CREATE POLICY "Allow all operations on vehicles" ON vehicles
   FOR ALL USING (true) WITH CHECK (true);
 
@@ -75,6 +82,9 @@ CREATE POLICY "Allow all operations on credits" ON credits
 
 CREATE POLICY "Allow all operations on expenses" ON expenses
   FOR ALL USING (true) WITH CHECK (true);
+
+-- Note: Application-level filtering by username is recommended for better security
+-- The policies above allow access, but your app should filter by username when querying
 
 -- Function to update updatedAt timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

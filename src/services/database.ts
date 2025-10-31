@@ -4,6 +4,20 @@ import { syncService } from './sync'
 import { syncCache } from './syncCache'
 import { Vehicle, Job, Expense, Credit } from '../types'
 
+// Helper to get current username from auth
+const getCurrentUsername = (): string | null => {
+  try {
+    const authData = localStorage.getItem('auth')
+    if (authData) {
+      const { username } = JSON.parse(authData)
+      return username || null
+    }
+  } catch (error) {
+    console.error('Failed to get username:', error)
+  }
+  return null
+}
+
 // Initialize IndexedDB and migrate from localStorage on first load
 let dbInitialized = false
 let migrationComplete = false
@@ -75,11 +89,15 @@ export const vehicleService = {
       
       // Background: Sync from Supabase and merge (only if enough time passed)
       if (import.meta.env.VITE_SUPABASE_URL && syncCache.shouldPullSync()) {
+        const username = getCurrentUsername()
         syncToSupabase(async (client) => {
-          const { data, error } = await client
+          let query = client
             .from('vehicles')
             .select('*')
-            .order('vehicleNumber', { ascending: true })
+          if (username) {
+            query = query.eq('username', username)
+          }
+          const { data, error } = await query.order('vehicleNumber', { ascending: true })
 
           if (!error && data) {
             // Merge remote data into IndexedDB (remote takes precedence)
@@ -109,9 +127,12 @@ export const vehicleService = {
       await indexedDBService.saveVehicle(vehicle)
       
       // Background: Sync to Supabase (optimized - only if needed)
-      syncToSupabase(async (client) => {
-        await client.from('vehicles').insert(vehicle)
-      }, 'vehicle', vehicle.id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client.from('vehicles').insert({ ...vehicle, username })
+        }, 'vehicle', vehicle.id)
+      }
       
       // Trigger optimized sync
       triggerSync('vehicle', vehicle.id)
@@ -133,15 +154,20 @@ export const vehicleService = {
       await indexedDBService.saveVehicle(vehicle)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        await supabase
-          .from('vehicles')
-          .update({
-            vehicleNumber: vehicle.vehicleNumber,
-            modelType: vehicle.modelType
-          })
-          .eq('id', vehicle.id)
-      }, 'vehicle', vehicle.id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client
+            .from('vehicles')
+            .update({
+              vehicleNumber: vehicle.vehicleNumber,
+              modelType: vehicle.modelType,
+              username
+            })
+            .eq('id', vehicle.id)
+            .eq('username', username)
+        }, 'vehicle', vehicle.id)
+      }
       
       // Trigger optimized sync
       triggerSync('vehicle', vehicle.id)
@@ -174,15 +200,18 @@ export const vehicleService = {
       await indexedDBService.deleteVehicle(id)
       
       // Background: Sync to Supabase (optimized - batch delete)
-      syncToSupabase(async (client) => {
-        // Delete jobs and expenses from Supabase
-        for (const job of jobs) {
-          await creditService.deleteByJobId(job.id)
-        }
-        await client.from('jobs').delete().eq('vehicleId', id)
-        await client.from('expenses').delete().eq('vehicleId', id)
-        await client.from('vehicles').delete().eq('id', id)
-      }, 'vehicle', id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          // Delete jobs and expenses from Supabase
+          for (const job of jobs) {
+            await creditService.deleteByJobId(job.id)
+          }
+          await client.from('jobs').delete().eq('vehicleId', id).eq('username', username)
+          await client.from('expenses').delete().eq('vehicleId', id).eq('username', username)
+          await client.from('vehicles').delete().eq('id', id).eq('username', username)
+        }, 'vehicle', id)
+      }
       
       // Trigger optimized sync
       triggerSync('vehicle', id)
@@ -205,12 +234,16 @@ export const jobService = {
       
       // Background: Sync from Supabase and merge (only if needed)
       if (import.meta.env.VITE_SUPABASE_URL && syncCache.shouldPullSync()) {
-        syncToSupabase(async () => {
-          const { data, error } = await supabase
+        const username = getCurrentUsername()
+        syncToSupabase(async (client) => {
+          let query = client
             .from('jobs')
             .select('*, credits(*)')
             .eq('vehicleId', vehicleId)
-            .order('createdAt', { ascending: false })
+          if (username) {
+            query = query.eq('username', username)
+          }
+          const { data, error } = await query.order('createdAt', { ascending: false })
 
           if (!error && data) {
             // Merge remote data into IndexedDB
@@ -238,21 +271,25 @@ export const jobService = {
       await indexedDBService.saveJob(job, vehicleId)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        const { credits, ...jobData } = job
-        const { data, error } = await supabase
-          .from('jobs')
-          .insert({
-            ...jobData,
-            vehicleId
-          })
-          .select()
-          .single()
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          const { credits, ...jobData } = job
+          const { data, error } = await client
+            .from('jobs')
+            .insert({
+              ...jobData,
+              vehicleId,
+              username
+            })
+            .select()
+            .single()
 
-        if (!error && data && credits && credits.length > 0) {
-          await creditService.createBatch(credits, data.id)
-        }
-      }, 'job', job.id)
+          if (!error && data && credits && credits.length > 0) {
+            await creditService.createBatch(credits, data.id)
+          }
+        }, 'job', job.id)
+      }
       
       // Trigger optimized sync
       triggerSync('job', job.id)
@@ -273,19 +310,23 @@ export const jobService = {
       await indexedDBService.saveJob(job, vehicleId)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        const { credits, ...jobData } = job
-        await supabase
-          .from('jobs')
-          .update(jobData)
-          .eq('id', job.id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          const { credits, ...jobData } = job
+          await client
+            .from('jobs')
+            .update({ ...jobData, username })
+            .eq('id', job.id)
+            .eq('username', username)
 
-        // Update credits
-        await creditService.deleteByJobId(job.id)
-        if (credits && credits.length > 0) {
-          await creditService.createBatch(credits, job.id)
-        }
-      }, 'job', job.id)
+          // Update credits
+          await creditService.deleteByJobId(job.id)
+          if (credits && credits.length > 0) {
+            await creditService.createBatch(credits, job.id)
+          }
+        }, 'job', job.id)
+      }
       
       // Trigger optimized sync
       triggerSync('job', job.id)
@@ -306,10 +347,13 @@ export const jobService = {
       await indexedDBService.deleteJob(id)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async (client) => {
-        await creditService.deleteByJobId(id)
-        await client.from('jobs').delete().eq('id', id)
-      }, 'job', id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await creditService.deleteByJobId(id)
+          await client.from('jobs').delete().eq('id', id).eq('username', username)
+        }, 'job', id)
+      }
       
       // Trigger optimized sync
       triggerSync('job', id)
@@ -354,12 +398,16 @@ export const jobService = {
         if (job) {
           // Also sync from Supabase to get latest credits (if enough time passed)
           if (import.meta.env.VITE_SUPABASE_URL && syncCache.shouldPullSync()) {
-            syncToSupabase(async () => {
-              const { data, error } = await supabase
+            const username = getCurrentUsername()
+            syncToSupabase(async (client) => {
+              let query = client
                 .from('jobs')
                 .select('*, credits(*)')
                 .eq('id', id)
-                .single()
+              if (username) {
+                query = query.eq('username', username)
+              }
+              const { data, error } = await query.single()
 
               if (!error && data) {
                 // Merge remote data (especially credits) into IndexedDB
@@ -376,12 +424,16 @@ export const jobService = {
       }
       
       // If not found in IndexedDB, try Supabase
-      if (import.meta.env.VITE_SUPABASE_URL) {
-        const { data, error } = await supabase
+      const username = getCurrentUsername()
+      if (import.meta.env.VITE_SUPABASE_URL && username && supabase) {
+        let query = supabase
           .from('jobs')
           .select('*, credits(*)')
           .eq('id', id)
-          .single()
+        if (username) {
+          query = query.eq('username', username)
+        }
+        const { data, error } = await query.single()
 
         if (!error && data) {
           // Find which vehicle this job belongs to
@@ -420,15 +472,17 @@ export const creditService = {
       }
       
       // Sync to Supabase - await to ensure it happens
-      if (import.meta.env.VITE_SUPABASE_URL) {
+      const username = getCurrentUsername()
+      if (import.meta.env.VITE_SUPABASE_URL && username && supabase) {
         try {
           const creditsToInsert = credits.map(credit => ({
             ...credit,
             type: credit.type || 'cash',
-            jobId
+            jobId,
+            username
           }))
 
-          const { error } = await client.from('credits').insert(creditsToInsert)
+          const { error } = await supabase.from('credits').insert(creditsToInsert)
           
           if (error) {
             console.error('Failed to sync credits batch to Supabase:', error)
@@ -465,9 +519,12 @@ export const creditService = {
       }
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async (client) => {
-        await client.from('credits').delete().eq('jobId', jobId)
-      }, 'credit', jobId)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client.from('credits').delete().eq('jobId', jobId).eq('username', username)
+        }, 'credit', jobId)
+      }
       
       // Trigger optimized sync
       triggerSync('credit', jobId)
@@ -490,9 +547,12 @@ export const creditService = {
             await indexedDBService.deleteCredit(id, job.id)
             
             // Background: Sync to Supabase (optimized)
-            syncToSupabase(async (client) => {
-              await client.from('credits').delete().eq('id', id)
-            }, 'credit', id)
+            const username = getCurrentUsername()
+            if (username) {
+              syncToSupabase(async (client) => {
+                await client.from('credits').delete().eq('id', id).eq('username', username)
+              }, 'credit', id)
+            }
             
             // Trigger optimized sync
             triggerSync('credit', id)
@@ -513,12 +573,14 @@ export const creditService = {
       await indexedDBService.saveCredit(credit, jobId)
       
       // Sync to Supabase - await to ensure it happens (credits are important)
-      if (import.meta.env.VITE_SUPABASE_URL && supabase) {
+      const username = getCurrentUsername()
+      if (import.meta.env.VITE_SUPABASE_URL && supabase && username) {
         try {
           const { error } = await supabase.from('credits').insert({
             ...credit,
             type: credit.type || 'cash',
-            jobId
+            jobId,
+            username
           })
           
           if (error) {
@@ -558,12 +620,16 @@ export const expenseService = {
       
       // Background: Sync from Supabase and merge (only if needed)
       if (import.meta.env.VITE_SUPABASE_URL && syncCache.shouldPullSync()) {
-        syncToSupabase(async () => {
-          const { data, error } = await supabase
+        const username = getCurrentUsername()
+        syncToSupabase(async (client) => {
+          let query = client
             .from('expenses')
             .select('*')
             .eq('vehicleId', vehicleId)
-            .order('date', { ascending: false })
+          if (username) {
+            query = query.eq('username', username)
+          }
+          const { data, error } = await query.order('date', { ascending: false })
 
           if (!error && data) {
             // Merge remote data into IndexedDB
@@ -591,12 +657,16 @@ export const expenseService = {
       await indexedDBService.saveExpense(expense, vehicleId)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async (client) => {
-        await client.from('expenses').insert({
-          ...expense,
-          vehicleId
-        })
-      }, 'expense', expense.id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client.from('expenses').insert({
+            ...expense,
+            vehicleId,
+            username
+          })
+        }, 'expense', expense.id)
+      }
       
       // Trigger optimized sync
       triggerSync('expense', expense.id)
@@ -617,17 +687,22 @@ export const expenseService = {
       await indexedDBService.saveExpense(expense, vehicleId)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        await supabase
-          .from('expenses')
-          .update({
-            title: expense.title,
-            amount: expense.amount,
-            date: expense.date,
-            description: expense.description
-          })
-          .eq('id', expense.id)
-      }, 'expense', expense.id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client
+            .from('expenses')
+            .update({
+              title: expense.title,
+              amount: expense.amount,
+              date: expense.date,
+              description: expense.description,
+              username
+            })
+            .eq('id', expense.id)
+            .eq('username', username)
+        }, 'expense', expense.id)
+      }
       
       // Trigger optimized sync
       triggerSync('expense', expense.id)
@@ -648,9 +723,12 @@ export const expenseService = {
       await indexedDBService.deleteExpense(id)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async (client) => {
-        await client.from('expenses').delete().eq('id', id)
-      }, 'expense', id)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client.from('expenses').delete().eq('id', id).eq('username', username)
+        }, 'expense', id)
+      }
       
       // Trigger optimized sync
       triggerSync('expense', id)
@@ -669,9 +747,12 @@ export const expenseService = {
       }
       
       // Background: Sync to Supabase (optimized - batch delete)
-      syncToSupabase(async (client) => {
-        await client.from('expenses').delete().eq('vehicleId', vehicleId)
-      }, 'expense', vehicleId)
+      const username = getCurrentUsername()
+      if (username) {
+        syncToSupabase(async (client) => {
+          await client.from('expenses').delete().eq('vehicleId', vehicleId).eq('username', username)
+        }, 'expense', vehicleId)
+      }
       
       // Trigger optimized sync
       triggerSync('expense', vehicleId)
