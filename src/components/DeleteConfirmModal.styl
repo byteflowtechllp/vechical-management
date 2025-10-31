@@ -12,6 +12,10 @@
   justify-content center
   z-index 1000
   padding spacing-md
+  padding-top: unquote('max(' + spacing-md + ', env(safe-area-inset-top))')
+  padding-bottom: unquote('max(' + spacing-md + ', env(safe-area-inset-bottom))')
+  padding-left: unquote('max(' + spacing-md + ', env(safe-area-inset-left))')
+  padding-right: unquote('max(' + spacing-md + ', env(safe-area-inset-right))')
 
 .modal-content
   background-color bg-primary
@@ -121,10 +125,19 @@
     transform scale(0.98)
 
 @media (max-width: mobile-breakpoint)
+  .modal-overlay
+    padding spacing-sm
+    padding-top: unquote('max(' + spacing-sm + ', env(safe-area-inset-top))')
+    padding-bottom: unquote('max(' + spacing-sm + ', env(safe-area-inset-bottom))')
+    padding-left: unquote('max(' + spacing-sm + ', env(safe-area-inset-left))')
+    padding-right: unquote('max(' + spacing-sm + ', env(safe-area-inset-right))')
+
   .modal-content
     max-width 100%
-    max-height 100vh
-    border-radius 0
+    max-height: unquote('calc(100vh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))')
+    border-radius radius-md
+    margin-top: unquote('env(safe-area-inset-top)')
+    margin-bottom: unquote('env(safe-area-inset-bottom)')
 
   .modal-header,
   .delete-confirm-content
