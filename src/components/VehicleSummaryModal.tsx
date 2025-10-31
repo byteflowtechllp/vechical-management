@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FiX } from 'react-icons/fi'
 import { Vehicle, Job, Expense } from '../types'
 import { jobService, expenseService } from '../services/database'
+import { useBackButton } from '../hooks/useBackButton'
 import './VehicleSummaryModal.styl'
 
 interface VehicleSummaryModalProps {
@@ -34,6 +35,9 @@ const VehicleSummaryModal = ({ vehicle, onClose }: VehicleSummaryModalProps) => 
   const [summary, setSummary] = useState<SummaryData | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onClose })
 
   useEffect(() => {
     loadSummaryData()

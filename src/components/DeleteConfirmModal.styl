@@ -22,7 +22,7 @@
   border-radius radius-lg
   width 100%
   max-width 500px
-  max-height 90vh
+  max-height 70vh
   overflow-y auto
   box-shadow shadow-lg
 
@@ -134,7 +134,7 @@
 
   .modal-content
     max-width 100%
-    max-height: unquote('calc(100vh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))')
+    max-height: unquote('min(70vh, calc(100vh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)))')
     border-radius radius-md
     margin-top: unquote('env(safe-area-inset-top)')
     margin-bottom: unquote('env(safe-area-inset-bottom)')

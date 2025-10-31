@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiX, FiSave, FiXCircle } from 'react-icons/fi'
 import { Expense } from '../types'
+import { useBackButton } from '../hooks/useBackButton'
 import './ExpenseModal.styl'
 
 interface ExpenseModalProps {
@@ -14,6 +15,9 @@ const ExpenseModal = ({ expense, onSave, onClose }: ExpenseModalProps) => {
   const [amount, setAmount] = useState<string>('')
   const [date, setDate] = useState<string>('')
   const [description, setDescription] = useState<string>('')
+
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onClose })
 
   useEffect(() => {
     if (expense) {

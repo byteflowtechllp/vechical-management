@@ -1,4 +1,5 @@
 import { FiX, FiAlertTriangle } from 'react-icons/fi'
+import { useBackButton } from '../hooks/useBackButton'
 import './DeleteConfirmModal.styl'
 
 interface DeleteConfirmModalProps {
@@ -8,6 +9,9 @@ interface DeleteConfirmModalProps {
 }
 
 const DeleteConfirmModal = ({ message, onConfirm, onCancel }: DeleteConfirmModalProps) => {
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onCancel })
+
   const handleConfirm = (): void => {
     onConfirm()
     onCancel()

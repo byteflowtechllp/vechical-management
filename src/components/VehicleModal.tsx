@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiX, FiSave, FiXCircle } from 'react-icons/fi'
 import { Vehicle } from '../types'
+import { useBackButton } from '../hooks/useBackButton'
 import './VehicleModal.styl'
 
 interface VehicleModalProps {
@@ -19,6 +20,9 @@ const VehicleModal = ({ vehicle, onSave, onClose }: VehicleModalProps) => {
       setModelType(vehicle.modelType)
     }
   }, [vehicle])
+
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onClose })
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()

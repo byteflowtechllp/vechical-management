@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FiX, FiSave, FiXCircle } from 'react-icons/fi'
 import { CreditType } from '../types'
+import { useBackButton } from '../hooks/useBackButton'
 import './CreditModal.styl'
 
 interface CreditModalProps {
@@ -9,6 +10,9 @@ interface CreditModalProps {
 }
 
 const CreditModal = ({ onSave, onClose }: CreditModalProps) => {
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onClose })
+
   const [amount, setAmount] = useState<string>('')
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [type, setType] = useState<CreditType>('cash')

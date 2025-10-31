@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiX, FiSave, FiXCircle } from 'react-icons/fi'
 import { Job, BillingCycle } from '../types'
+import { useBackButton } from '../hooks/useBackButton'
 import './JobModal.styl'
 
 interface JobModalProps {
@@ -17,6 +18,9 @@ const JobModal = ({ job, onSave, onClose }: JobModalProps) => {
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
   const [durationMonths, setDurationMonths] = useState<string>('')
+
+  // Handle Android back button
+  useBackButton({ enabled: true, onBack: onClose })
 
   useEffect(() => {
     if (job) {
