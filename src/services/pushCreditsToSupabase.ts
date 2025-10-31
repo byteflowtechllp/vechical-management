@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { Credit } from '../types'
 
 export async function pushAllCreditsToSupabase(): Promise<{ success: number; failed: number; errors: string[] }> {
-  if (!import.meta.env.VITE_SUPABASE_URL) {
+  if (!import.meta.env.VITE_SUPABASE_URL || !supabase) {
     console.warn('Supabase not configured')
     return { success: 0, failed: 0, errors: ['Supabase not configured'] }
   }

@@ -16,6 +16,9 @@ class SyncService {
   }
 
   async checkSupabaseConnection(): Promise<boolean> {
+    if (!supabase) {
+      return false
+    }
     try {
       const { error } = await supabase.from('vehicles').select('id').limit(1)
       return !error
@@ -93,16 +96,19 @@ class SyncService {
     }
 
     // Push local changes to Supabase (only new/updated ones)
-    for (const localVehicle of localVehicles) {
-      const remoteExists = remoteVehicles?.some(rv => rv.id === localVehicle.id)
-      if (!remoteExists) {
-        // New vehicle, push to Supabase
-        await supabase.from('vehicles').upsert(localVehicle)
+    if (supabase) {
+      for (const localVehicle of localVehicles) {
+        const remoteExists = remoteVehicles?.some(rv => rv.id === localVehicle.id)
+        if (!remoteExists) {
+          // New vehicle, push to Supabase
+          await supabase.from('vehicles').upsert(localVehicle)
+        }
       }
     }
   }
 
   private async syncJobs(vehicleId: string): Promise<void> {
+    if (!supabase) return
     // Pull from Supabase
     const { data: remoteJobs, error: fetchError } = await supabase
       .from('jobs')
@@ -145,20 +151,23 @@ class SyncService {
     }
 
     // Push local-only jobs to Supabase
-    for (const localJob of localJobs) {
-      const remoteExists = remoteJobs?.some(rj => rj.id === localJob.id)
-      if (!remoteExists) {
-        const { credits, ...jobData } = localJob
-        await supabase.from('jobs').upsert({ ...jobData, vehicleId })
-        // Sync credits separately
-        if (credits && credits.length > 0) {
-          await this.syncCredits(localJob.id)
+    if (supabase) {
+      for (const localJob of localJobs) {
+        const remoteExists = remoteJobs?.some(rj => rj.id === localJob.id)
+        if (!remoteExists) {
+          const { credits, ...jobData } = localJob
+          await supabase.from('jobs').upsert({ ...jobData, vehicleId })
+          // Sync credits separately
+          if (credits && credits.length > 0) {
+            await this.syncCredits(localJob.id)
+          }
         }
       }
     }
   }
 
   private async syncExpenses(vehicleId: string): Promise<void> {
+    if (!supabase) return
     // Pull from Supabase
     const { data: remoteExpenses, error: fetchError } = await supabase
       .from('expenses')
@@ -200,15 +209,18 @@ class SyncService {
     }
 
     // Push local-only expenses to Supabase
-    for (const localExpense of localExpenses) {
-      const remoteExists = remoteExpenses?.some(re => re.id === localExpense.id)
-      if (!remoteExists) {
-        await supabase.from('expenses').upsert({ ...localExpense, vehicleId })
+    if (supabase) {
+      for (const localExpense of localExpenses) {
+        const remoteExists = remoteExpenses?.some(re => re.id === localExpense.id)
+        if (!remoteExists) {
+          await supabase.from('expenses').upsert({ ...localExpense, vehicleId })
+        }
       }
     }
   }
 
   private async syncCredits(jobId: string): Promise<void> {
+    if (!supabase) return
     // Pull from Supabase
     const { data: remoteCredits, error: fetchError } = await supabase
       .from('credits')
@@ -237,10 +249,12 @@ class SyncService {
     }
 
     // Push local-only credits to Supabase
-    for (const localCredit of localCredits) {
-      const remoteExists = remoteCredits?.some(rc => rc.id === localCredit.id)
-      if (!remoteExists) {
-        await supabase.from('credits').upsert({ ...localCredit, jobId })
+    if (supabase) {
+      for (const localCredit of localCredits) {
+        const remoteExists = remoteCredits?.some(rc => rc.id === localCredit.id)
+        if (!remoteExists) {
+          await supabase.from('credits').upsert({ ...localCredit, jobId })
+        }
       }
     }
   }

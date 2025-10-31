@@ -25,10 +25,10 @@ const initPromise = indexedDBService.init().then(async () => {
 }).catch(console.error)
 
 // Helper to sync to Supabase in background (non-blocking, optimized)
-const syncToSupabase = async (operation: () => Promise<void>, entityType?: string, entityId?: string) => {
+const syncToSupabase = async (operation: (client: NonNullable<typeof supabase>) => Promise<void>, entityType?: string, entityId?: string) => {
   try {
-    if (import.meta.env.VITE_SUPABASE_URL) {
-      await operation()
+    if (import.meta.env.VITE_SUPABASE_URL && supabase) {
+      await operation(supabase)
       // Mark as synced if entity info provided
       if (entityType && entityId) {
         syncCache.markSynced(entityType, entityId)
@@ -75,8 +75,8 @@ export const vehicleService = {
       
       // Background: Sync from Supabase and merge (only if enough time passed)
       if (import.meta.env.VITE_SUPABASE_URL && syncCache.shouldPullSync()) {
-        syncToSupabase(async () => {
-          const { data, error } = await supabase
+        syncToSupabase(async (client) => {
+          const { data, error } = await client
             .from('vehicles')
             .select('*')
             .order('vehicleNumber', { ascending: true })
@@ -109,8 +109,8 @@ export const vehicleService = {
       await indexedDBService.saveVehicle(vehicle)
       
       // Background: Sync to Supabase (optimized - only if needed)
-      syncToSupabase(async () => {
-        await supabase.from('vehicles').insert(vehicle)
+      syncToSupabase(async (client) => {
+        await client.from('vehicles').insert(vehicle)
       }, 'vehicle', vehicle.id)
       
       // Trigger optimized sync
@@ -174,14 +174,14 @@ export const vehicleService = {
       await indexedDBService.deleteVehicle(id)
       
       // Background: Sync to Supabase (optimized - batch delete)
-      syncToSupabase(async () => {
+      syncToSupabase(async (client) => {
         // Delete jobs and expenses from Supabase
         for (const job of jobs) {
           await creditService.deleteByJobId(job.id)
         }
-        await supabase.from('jobs').delete().eq('vehicleId', id)
-        await supabase.from('expenses').delete().eq('vehicleId', id)
-        await supabase.from('vehicles').delete().eq('id', id)
+        await client.from('jobs').delete().eq('vehicleId', id)
+        await client.from('expenses').delete().eq('vehicleId', id)
+        await client.from('vehicles').delete().eq('id', id)
       }, 'vehicle', id)
       
       // Trigger optimized sync
@@ -306,9 +306,9 @@ export const jobService = {
       await indexedDBService.deleteJob(id)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
+      syncToSupabase(async (client) => {
         await creditService.deleteByJobId(id)
-        await supabase.from('jobs').delete().eq('id', id)
+        await client.from('jobs').delete().eq('id', id)
       }, 'job', id)
       
       // Trigger optimized sync
@@ -328,11 +328,11 @@ export const jobService = {
       }
       
       // Background: Sync to Supabase (optimized - batch delete)
-      syncToSupabase(async () => {
+      syncToSupabase(async (client) => {
         for (const job of jobs) {
           await creditService.deleteByJobId(job.id)
         }
-        await supabase.from('jobs').delete().eq('vehicleId', vehicleId)
+        await client.from('jobs').delete().eq('vehicleId', vehicleId)
       }, 'job', vehicleId)
       
       // Trigger optimized sync
@@ -428,7 +428,7 @@ export const creditService = {
             jobId
           }))
 
-          const { error } = await supabase.from('credits').insert(creditsToInsert)
+          const { error } = await client.from('credits').insert(creditsToInsert)
           
           if (error) {
             console.error('Failed to sync credits batch to Supabase:', error)
@@ -465,8 +465,8 @@ export const creditService = {
       }
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        await supabase.from('credits').delete().eq('jobId', jobId)
+      syncToSupabase(async (client) => {
+        await client.from('credits').delete().eq('jobId', jobId)
       }, 'credit', jobId)
       
       // Trigger optimized sync
@@ -490,8 +490,8 @@ export const creditService = {
             await indexedDBService.deleteCredit(id, job.id)
             
             // Background: Sync to Supabase (optimized)
-            syncToSupabase(async () => {
-              await supabase.from('credits').delete().eq('id', id)
+            syncToSupabase(async (client) => {
+              await client.from('credits').delete().eq('id', id)
             }, 'credit', id)
             
             // Trigger optimized sync
@@ -513,7 +513,7 @@ export const creditService = {
       await indexedDBService.saveCredit(credit, jobId)
       
       // Sync to Supabase - await to ensure it happens (credits are important)
-      if (import.meta.env.VITE_SUPABASE_URL) {
+      if (import.meta.env.VITE_SUPABASE_URL && supabase) {
         try {
           const { error } = await supabase.from('credits').insert({
             ...credit,
@@ -591,8 +591,8 @@ export const expenseService = {
       await indexedDBService.saveExpense(expense, vehicleId)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        await supabase.from('expenses').insert({
+      syncToSupabase(async (client) => {
+        await client.from('expenses').insert({
           ...expense,
           vehicleId
         })
@@ -648,8 +648,8 @@ export const expenseService = {
       await indexedDBService.deleteExpense(id)
       
       // Background: Sync to Supabase (optimized)
-      syncToSupabase(async () => {
-        await supabase.from('expenses').delete().eq('id', id)
+      syncToSupabase(async (client) => {
+        await client.from('expenses').delete().eq('id', id)
       }, 'expense', id)
       
       // Trigger optimized sync
@@ -669,8 +669,8 @@ export const expenseService = {
       }
       
       // Background: Sync to Supabase (optimized - batch delete)
-      syncToSupabase(async () => {
-        await supabase.from('expenses').delete().eq('vehicleId', vehicleId)
+      syncToSupabase(async (client) => {
+        await client.from('expenses').delete().eq('vehicleId', vehicleId)
       }, 'expense', vehicleId)
       
       // Trigger optimized sync
