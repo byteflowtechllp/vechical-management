@@ -5,12 +5,14 @@ import { Job, Credit } from '../types'
 import CreditModal from './CreditModal'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import ThemeToggle from './ThemeToggle'
+import { useAuth } from '../contexts/AuthContext'
 import { vehicleService, jobService, creditService } from '../services/database'
 import './JobCreditsScreen.styl'
 
 const JobCreditsScreen = () => {
   const { vehicleId, jobId } = useParams<{ vehicleId: string; jobId: string }>()
   const navigate = useNavigate()
+  const { canEdit } = useAuth()
   const [job, setJob] = useState<Job | null>(null)
   const [vehicleNumber, setVehicleNumber] = useState<string>('')
   const [isCreditModalOpen, setIsCreditModalOpen] = useState<boolean>(false)
@@ -165,9 +167,11 @@ const JobCreditsScreen = () => {
             </div>
             <div className="header-actions">
               <ThemeToggle />
-              <button className="add-button header-add-button" onClick={handleAddCredit}>
-                <FiPlus /> Add Credit
-              </button>
+              {canEdit() && (
+                <button className="add-button header-add-button" onClick={handleAddCredit}>
+                  <FiPlus /> Add Credit
+                </button>
+              )}
             </div>
           </header>
 
@@ -204,13 +208,15 @@ const JobCreditsScreen = () => {
                         </span>
                       </div>
                     </div>
-                    <button
-                      className="delete-credit-button"
-                      onClick={() => handleDeleteCredit(credit.id)}
-                      title="Delete Credit"
-                    >
-                      <FiTrash2 />
-                    </button>
+                    {canEdit() && (
+                      <button
+                        className="delete-credit-button"
+                        onClick={() => handleDeleteCredit(credit.id)}
+                        title="Delete Credit"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

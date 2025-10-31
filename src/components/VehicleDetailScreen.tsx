@@ -6,6 +6,7 @@ import JobModal from './JobModal'
 import ExpenseModal from './ExpenseModal'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import ThemeToggle from './ThemeToggle'
+import { useAuth } from '../contexts/AuthContext'
 import { vehicleService, jobService, expenseService } from '../services/database'
 import './VehicleDetailScreen.styl'
 
@@ -16,6 +17,7 @@ interface VehicleDetailScreenProps {
 const VehicleDetailScreen = ({}: VehicleDetailScreenProps) => {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const navigate = useNavigate()
+  const { canEdit } = useAuth()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -233,14 +235,16 @@ const VehicleDetailScreen = ({}: VehicleDetailScreenProps) => {
             </div>
             <div className="header-actions">
               <ThemeToggle />
-              {activeTab === 'job' ? (
-                <button className="add-button header-add-button" onClick={handleAddJob}>
-                  <FiPlus /> Add Job
-                </button>
-              ) : (
-                <button className="add-button header-add-button" onClick={handleAddExpense}>
-                  <FiPlus /> Add Expense
-                </button>
+              {canEdit() && (
+                activeTab === 'job' ? (
+                  <button className="add-button header-add-button" onClick={handleAddJob}>
+                    <FiPlus /> Add Job
+                  </button>
+                ) : (
+                  <button className="add-button header-add-button" onClick={handleAddExpense}>
+                    <FiPlus /> Add Expense
+                  </button>
+                )
               )}
             </div>
           </header>
@@ -277,22 +281,24 @@ const VehicleDetailScreen = ({}: VehicleDetailScreenProps) => {
                   >
                     <div className="job-header">
                       <h3>{job.title}</h3>
-                      <div className="job-actions" onClick={(e) => e.stopPropagation()}>
-                        <button 
-                          className="edit-button" 
-                          onClick={() => handleEditJob(job)}
-                          title="Edit Job"
-                        >
-                          <FiEdit2 />
-                        </button>
-                        <button 
-                          className="delete-button" 
-                          onClick={() => handleDeleteJob(job.id)}
-                          title="Delete Job"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
+                      {canEdit() && (
+                        <div className="job-actions" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            className="edit-button" 
+                            onClick={() => handleEditJob(job)}
+                            title="Edit Job"
+                          >
+                            <FiEdit2 />
+                          </button>
+                          <button 
+                            className="delete-button" 
+                            onClick={() => handleDeleteJob(job.id)}
+                            title="Delete Job"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="job-content">
                       <div className="job-key-metrics">
@@ -342,22 +348,24 @@ const VehicleDetailScreen = ({}: VehicleDetailScreenProps) => {
                   <div key={expense.id} className="expense-card">
                     <div className="expense-header">
                       <h3>{expense.title}</h3>
-                      <div className="expense-actions">
-                        <button 
-                          className="edit-button" 
-                          onClick={() => handleEditExpense(expense)}
-                          title="Edit Expense"
-                        >
-                          <FiEdit2 />
-                        </button>
-                        <button 
-                          className="delete-button" 
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          title="Delete Expense"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
+                      {canEdit() && (
+                        <div className="expense-actions">
+                          <button 
+                            className="edit-button" 
+                            onClick={() => handleEditExpense(expense)}
+                            title="Edit Expense"
+                          >
+                            <FiEdit2 />
+                          </button>
+                          <button 
+                            className="delete-button" 
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            title="Delete Expense"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="expense-content">
                       <div className="expense-key-metrics">

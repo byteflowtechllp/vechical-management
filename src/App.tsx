@@ -1,37 +1,23 @@
-import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import PasscodeScreen from './components/PasscodeScreen'
 import HomeScreen from './components/HomeScreen'
 import VehicleDetailScreen from './components/VehicleDetailScreen'
 import JobCreditsScreen from './components/JobCreditsScreen'
 import './App.styl'
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
-
-  useEffect(() => {
-    // Check if user is already authenticated
-    const authStatus = localStorage.getItem('isAuthenticated')
-    if (authStatus === 'true') {
-      setIsAuthenticated(true)
-    }
-  }, [])
+function AppRoutes() {
+  const { isAuthenticated, logout } = useAuth()
 
   const handleAuthentication = (): void => {
-    setIsAuthenticated(true)
-    localStorage.setItem('isAuthenticated', 'true')
-  }
-
-  const handleLogout = (): void => {
-    setIsAuthenticated(false)
-    localStorage.removeItem('isAuthenticated')
+    // Authentication is handled by AuthContext, this just navigates
+    // The AuthContext already updates isAuthenticated state
   }
 
   return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
+    <Router>
+      <Routes>
         <Route 
           path="/" 
           element={
@@ -46,7 +32,7 @@ function App() {
           path="/home" 
           element={
             isAuthenticated ? (
-              <HomeScreen onLogout={handleLogout} />
+              <HomeScreen onLogout={logout} />
             ) : (
               <Navigate to="/" replace />
             )
@@ -56,7 +42,7 @@ function App() {
           path="/vehicle/:vehicleId" 
           element={
             isAuthenticated ? (
-              <VehicleDetailScreen onLogout={handleLogout} />
+              <VehicleDetailScreen onLogout={logout} />
             ) : (
               <Navigate to="/" replace />
             )
@@ -72,8 +58,17 @@ function App() {
             )
           } 
         />
-        </Routes>
-      </Router>
+      </Routes>
+    </Router>
+  )
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </ThemeProvider>
   )
 }

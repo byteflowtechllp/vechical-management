@@ -6,6 +6,7 @@ import VehicleModal from './VehicleModal'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import VehicleSummaryModal from './VehicleSummaryModal'
 import ThemeToggle from './ThemeToggle'
+import { useAuth } from '../contexts/AuthContext'
 import { vehicleService } from '../services/database'
 import './HomeScreen.styl'
 
@@ -20,6 +21,7 @@ const HomeScreen = ({ onLogout }: HomeScreenProps) => {
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ isOpen: boolean; vehicleId: string | null }>({ isOpen: false, vehicleId: null })
   const [summaryModal, setSummaryModal] = useState<{ isOpen: boolean; vehicle: Vehicle | null }>({ isOpen: false, vehicle: null })
   const navigate = useNavigate()
+  const { canEdit, role } = useAuth()
 
   useEffect(() => {
     loadVehicles()
@@ -122,9 +124,16 @@ const HomeScreen = ({ onLogout }: HomeScreenProps) => {
         </header>
 
       <div className="content">
-        <button className="add-button" onClick={handleAddVehicle}>
-          <FiPlus /> Add Vehicle
-        </button>
+        {canEdit() && (
+          <button className="add-button" onClick={handleAddVehicle}>
+            <FiPlus /> Add Vehicle
+          </button>
+        )}
+        {role === 'view' && (
+          <div className="view-only-notice">
+            <p>View-only mode: You can view data but cannot make changes.</p>
+          </div>
+        )}
 
         {vehicles.length === 0 ? (
           <div className="empty-state">
@@ -146,20 +155,24 @@ const HomeScreen = ({ onLogout }: HomeScreenProps) => {
                   >
                     <FiInfo />
                   </button>
-                  <button 
-                    className="edit-button" 
-                    onClick={() => handleEditVehicle(vehicle)}
-                    title="Edit Vehicle"
-                  >
-                    <FiEdit2 />
-                  </button>
-                  <button 
-                    className="delete-button" 
-                    onClick={() => handleDeleteVehicle(vehicle.id)}
-                    title="Delete Vehicle"
-                  >
-                    <FiTrash2 />
-                  </button>
+                  {canEdit() && (
+                    <>
+                      <button 
+                        className="edit-button" 
+                        onClick={() => handleEditVehicle(vehicle)}
+                        title="Edit Vehicle"
+                      >
+                        <FiEdit2 />
+                      </button>
+                      <button 
+                        className="delete-button" 
+                        onClick={() => handleDeleteVehicle(vehicle.id)}
+                        title="Delete Vehicle"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}

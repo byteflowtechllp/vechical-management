@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import './PasscodeScreen.styl'
 
 interface PasscodeScreenProps {
@@ -8,16 +9,28 @@ interface PasscodeScreenProps {
 const PasscodeScreen = ({ onAuthenticate }: PasscodeScreenProps) => {
   const [passcode, setPasscode] = useState<string>('')
   const [error, setError] = useState<string>('')
-  const correctPasscode = '1234' // Default passcode, can be changed
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const { authenticate } = useAuth()
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
-    if (passcode === correctPasscode) {
-      onAuthenticate()
-      setError('')
-    } else {
-      setError('Incorrect passcode. Please try again.')
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const result = await authenticate(passcode)
+      if (result.success) {
+        onAuthenticate()
+        setPasscode('')
+      } else {
+        setError(result.error || 'Incorrect passcode. Please try again.')
+        setPasscode('')
+      }
+    } catch (error) {
+      setError('Authentication failed. Please try again.')
       setPasscode('')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -40,8 +53,8 @@ const PasscodeScreen = ({ onAuthenticate }: PasscodeScreenProps) => {
             maxLength={10}
           />
           {error && <p className="error-message">{error}</p>}
-          <button type="submit" className="submit-button">
-            Enter
+          <button type="submit" className="submit-button" disabled={isLoading}>
+            {isLoading ? 'Verifying...' : 'Enter'}
           </button>
         </form>
       </div>
