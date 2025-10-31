@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'Vehicle Management',
         short_name: 'Vehicle Mgt',
@@ -15,21 +15,43 @@ export default defineConfig({
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'standalone',
+        start_url: '/',
+        scope: '/',
+        orientation: 'portrait',
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ],
